@@ -54,6 +54,9 @@ namespace QMK_Toolbox
         [DllImport("user32.dll")]
         private static extern bool InsertMenu(IntPtr hMenu, int wPosition, int wFlags, int wIdNewItem, string lpNewItem);
 
+        private ManagementEventWatcher _creationWatcher;
+        private ManagementEventWatcher _deletionWatcher;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -626,17 +629,18 @@ namespace QMK_Toolbox
 
         private void StartListeningForDeviceEvents()
         {
-            StartManagementEventWatcher("__InstanceCreationEvent");
-            StartManagementEventWatcher("__InstanceDeletionEvent");
+            _creationWatcher = StartManagementEventWatcher("__InstanceCreationEvent");
+            _deletionWatcher = StartManagementEventWatcher("__InstanceDeletionEvent");
         }
-
-        private void StartManagementEventWatcher(string eventType)
+        
+        private ManagementEventWatcher StartManagementEventWatcher(string eventType)
         {
             var watcher = new ManagementEventWatcher($"SELECT * FROM {eventType} WITHIN 2 WHERE TargetInstance ISA 'Win32_PnPEntity'");
             watcher.EventArrived += DeviceEvent;
             watcher.Start();
+            return watcher;
         }
-
+        
         private void autoflashCheckbox_CheckedChanged(object sender, EventArgs e)
         {
             if (autoflashCheckbox.Checked)
@@ -785,5 +789,22 @@ namespace QMK_Toolbox
         {
             loadKeymap.Enabled = keyboardBox.Items.Contains(keyboardBox.Text);
         }
+
+        /// <summary>
+        /// Clean up any resources being used.
+        /// </summary>
+        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                components?.Dispose();
+                _creationWatcher?.Dispose();
+                _deletionWatcher?.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
+
     }
 }
